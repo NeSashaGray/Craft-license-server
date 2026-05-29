@@ -12,6 +12,17 @@ module.exports = async function handler(req, res) {
 
   if (!key || !hwid) return res.status(400).json({ ok: false, error: 'Нет ключа или HWID' });
 
+  // Получаем IP и геолокацию
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  let location = 'unknown';
+  try {
+    const geoRes = await fetch(`http://ip-api.com/json/${ip}?lang=ru&fields=country,city,isp`);
+    const geo = await geoRes.json();
+    if (geo.city) location = `${geo.country}, ${geo.city} · ${geo.isp}`;
+  } catch(e) {}
+
+  const full_info = `${device_info || 'unknown'} · IP: ${ip} · ${location}`;
+
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
   const { data, error } = await supabase
@@ -24,9 +35,9 @@ module.exports = async function handler(req, res) {
   if (!data.active) return res.status(403).json({ ok: false, error: 'Ключ деактивирован' });
 
   if (!data.hwid) {
-    await supabase.from('licenses').update({ 
-      hwid, 
-      device_info: device_info || null,
+    await supabase.from('licenses').update({
+      hwid,
+      device_info: full_info,
       activated_at: new Date().toISOString()
     }).eq('key', key);
     return res.status(200).json({ ok: true });
@@ -35,4 +46,3 @@ module.exports = async function handler(req, res) {
   if (data.hwid !== hwid) return res.status(403).json({ ok: false, error: 'Ключ привязан к другому устройству' });
 
   return res.status(200).json({ ok: true });
-};
