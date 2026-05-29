@@ -1,14 +1,17 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_KEY
+  );
 
   const { admin_password } = req.body;
   if (admin_password !== process.env.ADMIN_PASSWORD) {
@@ -16,8 +19,7 @@ export default async function handler(req, res) {
   }
 
   const key = 'CRAFT-' + crypto.randomBytes(8).toString('hex').toUpperCase();
-
   await supabase.from('licenses').insert({ key, active: true });
 
   return res.status(200).json({ ok: true, key });
-}
+};
