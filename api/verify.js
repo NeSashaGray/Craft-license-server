@@ -8,7 +8,7 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') body = JSON.parse(body);
-  const { key, hwid } = body || {};
+  const { key, hwid, device_info } = body || {};
 
   if (!key || !hwid) return res.status(400).json({ ok: false, error: 'Нет ключа или HWID' });
 
@@ -24,7 +24,11 @@ module.exports = async function handler(req, res) {
   if (!data.active) return res.status(403).json({ ok: false, error: 'Ключ деактивирован' });
 
   if (!data.hwid) {
-    await supabase.from('licenses').update({ hwid }).eq('key', key);
+    await supabase.from('licenses').update({ 
+      hwid, 
+      device_info: device_info || null,
+      activated_at: new Date().toISOString()
+    }).eq('key', key);
     return res.status(200).json({ ok: true });
   }
 
