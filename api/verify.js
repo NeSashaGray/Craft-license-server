@@ -1,18 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { key, hwid } = req.body;
+  let body = req.body;
+  if (typeof body === 'string') body = JSON.parse(body);
+  const { key, hwid } = body || {};
+
   if (!key || !hwid) return res.status(400).json({ ok: false, error: 'Нет ключа или HWID' });
+
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
   const { data, error } = await supabase
     .from('licenses')
@@ -31,4 +31,4 @@ export default async function handler(req, res) {
   if (data.hwid !== hwid) return res.status(403).json({ ok: false, error: 'Ключ привязан к другому устройству' });
 
   return res.status(200).json({ ok: true });
-}
+};
